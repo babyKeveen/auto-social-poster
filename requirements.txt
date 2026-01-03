@@ -1,0 +1,10 @@
+openai
+google-generativeai
+Mastodon.py
+instagrapi
+python-dotenv
+Pillow
+torch
+torchvision
+transformers<4.50
+einops
