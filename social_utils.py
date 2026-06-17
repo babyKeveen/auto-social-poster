@@ -1,29 +1,57 @@
 import os
+import tempfile
 from mastodon import Mastodon
 from instagrapi import Client
+from PIL import Image
+
+# Mastodon rejects images above this pixel count (width * height).
+MASTODON_MAX_PIXELS = 16_000_000
+
+def _resize_for_mastodon(image_path):
+    with Image.open(image_path) as img:
+        width, height = img.size
+        if width * height <= MASTODON_MAX_PIXELS:
+            return image_path
+
+        scale = (MASTODON_MAX_PIXELS / (width * height)) ** 0.5
+        new_size = (int(width * scale), int(height * scale))
+
+        fmt = img.format or "JPEG"
+        suffix = os.path.splitext(image_path)[1] or ".jpg"
+        resized = img.convert("RGB") if fmt == "JPEG" else img
+        resized = resized.resize(new_size, Image.LANCZOS)
+
+        tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+        resized.save(tmp.name, fmt)
+        tmp.close()
+        return tmp.name
 
 def post_to_mastodon(image_path, text, alt_text):
     access_token = os.getenv("MASTODON_ACCESS_TOKEN")
     api_base_url = os.getenv("MASTODON_API_BASE_URL")
-    
+
     if not access_token or not api_base_url:
         print("Skipping Mastodon: Missing configuration.")
         return
 
+    upload_path = _resize_for_mastodon(image_path)
     try:
         mastodon = Mastodon(
             access_token=access_token,
             api_base_url=api_base_url
         )
-        
+
         print("Uploading media to Mastodon...")
-        media = mastodon.media_post(image_path, description=alt_text)
-        
+        media = mastodon.media_post(upload_path, description=alt_text)
+
         print("Posting status to Mastodon...")
         mastodon.status_post(text, media_ids=[media])
         print("Successfully posted to Mastodon!")
     except Exception as e:
         print(f"Failed to post to Mastodon: {e}")
+    finally:
+        if upload_path != image_path:
+            os.remove(upload_path)
 
 def post_to_instagram(image_path, text, alt_text):
     username = os.getenv("INSTAGRAM_USERNAME")

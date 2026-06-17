@@ -41,7 +41,7 @@ def generate_alt_text_gemini(image_path, api_key):
     # Load image using PIL
     img = Image.open(image_path)
     
-    model = genai.GenerativeModel('gemini-3-pro-preview')
+    model = genai.GenerativeModel('gemini-2.5-pro')
     response = model.generate_content(
         ["Generate a concise and descriptive alt-text for this image, suitable for visually impaired users. Do not include 'Image of' or similar introductory phrases.", img]
     )
