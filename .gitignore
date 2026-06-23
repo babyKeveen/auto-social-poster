@@ -6,3 +6,4 @@ __pycache__/
 .claude/
 test_image.jpg
 screenshot.png
+prefs.json

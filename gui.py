@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import threading
@@ -11,6 +12,26 @@ from ai_utils import generate_alt_text
 from social_utils import post_to_mastodon, post_to_instagram
 
 PREVIEW_SIZE = (300, 300)
+DEFAULT_IMAGE_DIR = os.path.expanduser(r"~\photoworkshop")
+PREFS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prefs.json")
+
+
+def load_prefs():
+    if os.path.exists(PREFS_FILE):
+        try:
+            with open(PREFS_FILE) as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def save_prefs(prefs):
+    try:
+        with open(PREFS_FILE, "w") as f:
+            json.dump(prefs, f)
+    except Exception:
+        pass
 
 
 class TextRedirector:
@@ -32,6 +53,7 @@ class TextRedirector:
 class App:
     def __init__(self, root):
         self.root = root
+        self.prefs = load_prefs()
         root.title("Auto Social Poster")
         root.geometry("860x560")
         root.minsize(700, 450)
@@ -104,14 +126,20 @@ class App:
             self._preview_image = None
 
     def browse_image(self):
+        last_dir = self.prefs.get("last_image_dir", DEFAULT_IMAGE_DIR)
+        if not os.path.isdir(last_dir):
+            last_dir = DEFAULT_IMAGE_DIR if os.path.isdir(DEFAULT_IMAGE_DIR) else None
         path = filedialog.askopenfilename(
             title="Select an image",
+            initialdir=last_dir,
             filetypes=[
                 ("Image files", "*.jpg *.jpeg *.png *.gif *.webp *.bmp"),
                 ("All files", "*.*"),
             ],
         )
         if path:
+            self.prefs["last_image_dir"] = os.path.dirname(path)
+            save_prefs(self.prefs)
             self.image_var.set(path)
             self.update_preview(path)
 
